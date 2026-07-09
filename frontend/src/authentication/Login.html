@@ -1,0 +1,51 @@
+<script>
+  // Auth navigation check instantly on load
+  const token = localStorage.getItem('supabase_auth_token');
+  if (token) {
+    window.location.href = '../dashboard/Dashboard.html';
+  }
+
+  document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    
+    const email = document.getElementById('email').value;
+    const password = document.getElementById('password').value;
+    const errorMessage = document.getElementById('error-message');
+    
+    errorMessage.style.display = 'none';
+    errorMessage.innerText = '';
+
+    try {
+      // Direct network route hit matching our Express server endpoint
+      const response = await fetch('http://localhost:5000/api/auth/login', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ email, password })
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || 'Authentication verification failed.');
+      }
+
+      // Secure session caching parameters storage
+      localStorage.setItem('supabase_auth_token', data.session.access_token);
+      localStorage.setItem('user_info', JSON.stringify({
+        username: data.user.email.split('@')[0],
+        email: data.user.email,
+        sessionStatus: 'Active',
+        lastLogin: new Date().toISOString()
+      }));
+
+      // Redirect target path location execution
+      window.location.href = '../dashboard/Dashboard.html';
+
+    } catch (err) {
+      errorMessage.style.display = 'block';
+      errorMessage.innerText = err.message;
+    }
+  });
+</script>

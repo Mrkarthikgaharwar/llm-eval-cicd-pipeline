@@ -1,0 +1,40 @@
+name: Node.js Continuous Integration Pipeline
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+
+jobs:
+  build-and-validate:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        node-version: [20.x, 22.x]
+
+    steps:
+    - name: Checkout Repository Code Assets
+      uses: actions/checkout@v4
+
+    - name: Use Node.js Version Matrix ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+
+    - name: Install Project Dependencies Structure
+      run: npm ci
+
+    - name: Run Automated Test Suites Engine with Strict Quality Gates
+      run: |
+        echo "[QUALITY GATE] Launching rigorous validation checks pipeline..."
+        npm test
+        echo "[QUALITY GATE] Verification metrics thresholds check passed successfully."
+      env:
+        PORT: 5000
+        SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+        SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+        GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+        NODE_ENV: test

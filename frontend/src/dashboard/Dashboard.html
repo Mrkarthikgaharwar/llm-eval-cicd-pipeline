@@ -1,0 +1,598 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - LLM Evaluation Pipeline</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #0f172a;
+            color: #f8fafc;
+            margin: 0;
+            padding: 0;
+        }
+        .navbar {
+            background-color: #1e293b;
+            padding: 1rem 2rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #334155;
+        }
+        .navbar h1 { margin: 0; font-size: 1.5rem; color: #38bdf8; }
+        .nav-right { display: flex; align-items: center; gap: 1.5rem; }
+        .session-badge {
+            background-color: #059669;
+            color: white;
+            padding: 0.25rem 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+        .logout-btn {
+            background-color: #ef4444;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            font-weight: 600;
+        }
+        .logout-btn:hover { background-color: #dc2626; }
+        .container { padding: 2rem; max-width: 1200px; margin: 0 auto; display: flex; flex-direction: column; gap: 2rem; }
+        
+        .welcome-card, .profile-section, .comparison-card, .prompt-card, .terminal-card, .tracing-card {
+            background-color: #1e293b;
+            padding: 2rem;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+        .profile-section { padding: 1.5rem; }
+        
+        .profile-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+            margin-top: 1rem;
+        }
+        .profile-field {
+            background-color: #0f172a;
+            padding: 0.75rem;
+            border-radius: 6px;
+        }
+        .profile-field label { font-size: 0.75rem; color: #94a3b8; text-transform: uppercase; display: block; }
+        .profile-field span { font-size: 1rem; color: #f8fafc; font-weight: 500; }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+        }
+        .stat-card {
+            background-color: #1e293b;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border-left: 4px solid #38bdf8;
+        }
+        .stat-card h3 { margin: 0 0 0.5rem 0; color: #94a3b8; font-size: 0.875rem; text-transform: uppercase; }
+        .stat-card p { margin: 0; font-size: 1.75rem; font-weight: bold; color: #f8fafc; }
+        
+        .two-col-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1.5rem; }
+        .three-col-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 1.5rem; }
+        .analytics-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 1.5rem; }
+
+        @media (max-width: 968px) {
+            .two-col-grid, .analytics-grid, .three-col-grid { grid-template-columns: 1fr !important; }
+        }
+        
+        .chart-card, .timeline-card, .repo-card, .cicd-card, .geval-card, .hallucination-card, .trace-node-card, .sdk-sync-card, .qgate-card, .cloud-card {
+            background-color: #1e293b;
+            padding: 1.5rem;
+            border-radius: 8px;
+            border: 1px solid #334155;
+        }
+        .chart-card h3, .timeline-card h3, .repo-card h3, .cicd-card h3, .geval-card h3, .hallucination-card h3, .tracing-card h3, .trace-node-card h3, .sdk-sync-card h3, .qgate-card h3, .cloud-card h3 { margin-top: 0; color: #38bdf8; margin-bottom: 1rem; }
+        
+        .repo-meta-list { display: flex; flex-direction: column; gap: 0.65rem; }
+        .repo-meta-item { display: flex; justify-content: space-between; background-color: #0f172a; padding: 0.6rem 1rem; border-radius: 6px; font-size: 0.9rem; }
+        .repo-meta-label { color: #94a3b8; }
+        .repo-meta-value { color: #38bdf8; font-family: monospace; font-weight: bold; }
+        
+        .standard-table { width: 100%; border-collapse: collapse; background-color: #0f172a; border-radius: 6px; overflow: hidden; }
+        .standard-table th, .standard-table td { padding: 0.75rem 1rem; text-align: left; border-bottom: 1px solid #334155; font-size: 0.875rem; }
+        .standard-table th { background-color: #0f172a; color: #a78bfa; font-size: 0.75rem; text-transform: uppercase; }
+        
+        .status-pill { padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.75rem; font-weight: bold; text-transform: uppercase; }
+        .status-success { background-color: #064e3b; color: #34d399; }
+        .status-running { background-color: #78350f; color: #fbbf24; }
+        .status-failed { background-color: #7f1d1d; color: #f87171; }
+
+        .eval-score-badge { font-weight: bold; font-family: monospace; padding: 0.2rem 0.6rem; border-radius: 4px; font-size: 0.9rem; }
+        .score-high { color: #34d399; background-color: rgba(52, 211, 153, 0.1); }
+        .score-med { color: #fbbf24; background-color: rgba(251, 191, 36, 0.1); }
+        .reasoning-text { font-size: 0.8rem; color: #94a3b8; font-style: italic; display: block; margin-top: 0.25rem; line-height: 1.3; }
+
+        .trace-tree { display: flex; flex-direction: column; gap: 0.75rem; }
+        .trace-step { background-color: #0f172a; padding: 0.85rem 1.25rem; border-radius: 6px; border-left: 3px solid #38bdf8; display: flex; justify-content: space-between; align-items: center; }
+        .trace-info { display: flex; flex-direction: column; gap: 0.2rem; }
+        .trace-name { font-weight: 600; color: #f8fafc; font-size: 0.95rem; }
+        .trace-duration { font-size: 0.8rem; color: #94a3b8; font-family: monospace; }
+        .trace-status { font-size: 0.8rem; font-weight: bold; color: #34d399; text-transform: uppercase; }
+
+        /* ========================================================
+           PHASE 4: NEW SYSTEM INFRASTRUCTURE METRIC PILLS STYLES
+           ======================================================== */
+        .gate-condition { font-family: monospace; color: #f59e0b; font-weight: bold; }
+
+        .timeline-container { display: flex; flex-direction: column; gap: 1rem; max-height: 320px; overflow-y: auto; }
+        .timeline-item { background-color: #0f172a; padding: 0.75rem; border-radius: 6px; border-left: 3px solid #a78bfa; }
+        .timeline-commit { font-family: monospace; color: #38bdf8; font-size: 0.9rem; }
+        .timeline-meta { font-size: 0.8rem; color: #94a3b8; margin-top: 0.25rem; }
+        .timeline-metrics { font-size: 0.85rem; color: #34d399; margin-top: 0.25rem; font-weight: 600; }
+        
+        .selector-row { display: flex; gap: 1.5rem; margin-bottom: 1.5rem; flex-wrap: wrap; }
+        .selector-group { flex: 1; min-width: 200px; }
+        .selector-group label { display: block; font-size: 0.85rem; color: #94a3b8; margin-bottom: 0.5rem; text-transform: uppercase; }
+        .selector-group select { width: 100%; padding: 0.75rem; background-color: #0f172a; color: #f8fafc; border: 1px solid #334155; border-radius: 6px; font-size: 1rem; cursor: pointer; }
+        .metric-name { font-weight: 600; color: #94a3b8; }
+        .highlight-win { color: #34d399; font-weight: bold; }
+        
+        .template-name { font-family: monospace; color: #38bdf8; font-weight: bold; }
+        .token-badge-in { background-color: #1e3a8a; color: #60a5fa; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+        .token-badge-out { background-color: #064e3b; color: #34d399; padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; font-weight: bold; }
+        
+        .terminal-box { background-color: #020617; border: 1px solid #1e293b; border-radius: 6px; padding: 1.25rem; font-family: 'Courier New', Courier, monospace; font-size: 0.9rem; color: #34d399; height: 160px; overflow-y: auto; line-height: 1.5; box-shadow: inset 0 2px 4px rgba(0,0,0,0.8); }
+        .log-timestamp { color: #64748b; margin-right: 0.5rem; }
+        .log-info { color: #38bdf8; }
+        .log-warn { color: #f59e0b; }
+        .log-success { color: #10b981; font-weight: bold; }
+    </style>
+</head>
+<body>
+
+<nav class="navbar">
+    <h1>LLM Evaluation Pipeline</h1>
+    <div class="nav-right">
+        <span class="session-badge" id="session-badge">Session: Checking...</span>
+        <button class="logout-btn" id="logout-button">Logout</button>
+    </div>
+</nav>
+
+<div class="container">
+    <!-- Profile Area -->
+    <div class="profile-section">
+        <h3 style="margin-top:0; color:#38bdf8;">Authenticated User Profile Information</h3>
+        <div class="profile-grid">
+            <div class="profile-field"><label>Username</label> <span id="prof-username">Loading...</span></div>
+            <div class="profile-field"><label>Email Address</label> <span id="prof-email">Loading...</span></div>
+            <div class="profile-field"><label>Session Status</label> <span id="prof-status">Loading...</span></div>
+            <div class="profile-field"><label>Last Verified</label> <span id="prof-verified">Loading...</span></div>
+        </div>
+    </div>
+
+    <div class="welcome-card">
+        <h2>Welcome to your Panel, <span id="welcome-name">User</span>!</h2>
+        <p style="color: #94a3b8;">Aapka authentication flow ab perfect chal raha hai. System Quality gates assertions aur enterprise cloud deployments active arrays par aligned hain.</p>
+    </div>
+
+    <!-- Core Dynamic Cards -->
+    <div class="stats-grid">
+        <div class="stat-card"><h3>Total Evaluations</h3> <p id="metric-total">...</p></div>
+        <div class="stat-card" style="border-left-color: #34d399;"><h3>Average Accuracy</h3> <p id="metric-accuracy">...</p></div>
+        <div class="stat-card" style="border-left-color: #a78bfa;"><h3>Active Pipelines</h3> <p id="metric-pipelines">...</p></div>
+    </div>
+
+    <!-- PHASE 1: REPOSITORY AND CI/CD LAYERS -->
+    <div class="two-col-grid">
+        <div class="repo-card">
+            <h3>Repository Analytics UI</h3>
+            <div class="repo-meta-list">
+                <div class="repo-meta-item"><span class="repo-meta-label">Connected Repository</span><span class="repo-meta-value">llm-eval-cicd-pipeline</span></div>
+                <div class="repo-meta-item"><span class="repo-meta-label">Active Git Branch</span><span class="repo-meta-value">main</span></div>
+                <div class="repo-meta-item"><span class="repo-meta-label">Open Pull Requests</span><span class="repo-meta-value" style="color: #fbbf24;">2 Pending</span></div>
+                <div class="repo-meta-item"><span class="repo-meta-label">Total Sync Commits</span><span class="repo-meta-value">148 Commits</span></div>
+            </div>
+        </div>
+        <div class="cicd-card">
+            <h3>GitHub Actions CI/CD Pipeline</h3>
+            <table class="standard-table">
+                <thead><tr><th>Workflow Job</th><th>Triggered By</th><th>Live Status</th></tr></thead>
+                <tbody id="cicd-workflow-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PHASE 2: EXPLICIT VISUALIZATION MATRIX -->
+    <div class="two-col-grid">
+        <div class="geval-card">
+            <h3>G-Eval Framework (NLP Criteria Metrics)</h3>
+            <table class="standard-table">
+                <thead><tr><th>Evaluation Param</th><th>CoT Score</th><th>LLM Reason / Verdict</th></tr></thead>
+                <tbody id="geval-metrics-body"></tbody>
+            </table>
+        </div>
+        <div class="hallucination-card">
+            <h3>Hallucination, Faithfulness & Relevance</h3>
+            <table class="standard-table">
+                <thead><tr><th>Target Pipeline</th><th>Faithfulness</th><th>Answer Relevance</th><th>Status</th></tr></thead>
+                <tbody id="hallucination-metrics-body"></tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- PHASE 3: OBSERVABILITY TRACING SYSTEM -->
+    <div class="three-col-grid">
+        <div class="trace-node-card">
+            <h3>Component-Level Tracing</h3>
+            <div class="trace-tree" id="tracing-tree-body"></div>
+        </div>
+        <div class="sdk-sync-card">
+            <h3>Langfuse Integration</h3>
+            <table class="standard-table">
+                <thead><tr><th>Trace Parameter</th><th>Value State</th></tr></thead>
+                <tbody>
+                    <tr><td>SDK Status</td><td><span class="status-pill status-success">Connected</span></td></tr>
+                    <tr><td>Total Synced Spans</td><td style="font-family: monospace; color:#38bdf8; font-weight:bold;">4,192 Spans</td></tr>
+                    <tr><td>API Latency (Trace)</td><td style="color: #34d399; font-weight:bold;">42ms</td></tr>
+                </tbody>
+            </table>
+        </div>
+        <div class="sdk-sync-card" style="border-left-width: 4px; border-left-color:#a78bfa;">
+            <h3>Phoenix Integration</h3>
+            <table class="standard-table">
+                <thead><tr><th>Collector Node</th><th>Status State</th></tr></thead>
+                <tbody>
+                    <tr><td>Telemetry Endpoint</td><td style="font-family: monospace; color:#94a3b8;">http://localhost:6006</td></tr>
+                    <tr><td>Inference Captures</td><td style="font-family: monospace; color:#38bdf8; font-weight:bold;">1,248 Captured</td></tr>
+                    <tr><td>Active Session Ring</td><td><span class="status-pill status-success">Live Listening</span></td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- ========================================================
+       PHASE 4: NEW ENTERPRISE CONTROLS GRID (QUALITY GATES & DEPLOYMENT INFRA)
+       ======================================================== -->
+    <div class="two-col-grid">
+        <!-- Step 4.1: Quality Gates Assertions Framework -->
+        <div class="qgate-card">
+            <h3>Enterprise Quality Gates</h3>
+            <table class="standard-table">
+                <thead>
+                    <tr>
+                        <th>Assertion Rule ID</th>
+                        <th>Threshold Condition</th>
+                        <th>Gate Verdict</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>min-accuracy-guard</td><td class="gate-condition">Accuracy >= 90.0%</td><td><span class="status-pill status-success">Passed</span></td></tr>
+                    <tr><td>max-hallucination-limit</td><td class="gate-condition">Hallucination <= 5.0%</td><td><span class="status-pill status-success">Passed</span></td></tr>
+                    <tr><td>max-latency-ceiling</td><td class="gate-condition">Latency <= 350ms</td><td><span class="status-pill status-success">Passed</span></td></tr>
+                </tbody>
+            </table>
+        </div>
+
+        <!-- Step 4.2: Cloud Deployment Status Panel -->
+        <div class="cloud-card" style="border-right-width: 4px; border-right-color:#34d399;">
+            <h3>Cloud Deployment & Infrastructure</h3>
+            <table class="standard-table">
+                <thead>
+                    <tr>
+                        <th>Infrastructure Asset</th>
+                        <th>Target Route Link</th>
+                        <th>Network Status</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr><td>Production Gateway</td><td style="font-family: monospace; font-size:0.8rem; color:#38bdf8;">api.eval-pipeline.cloud</td><td><span class="status-pill status-success">Active Live</span></td></tr>
+                    <tr><td>Edge Node Cluster</td><td style="font-family: monospace; font-size:0.8rem; color:#94a3b8;">aws-us-east-cluster-04</td><td><span class="status-pill status-success">Healthy</span></td></tr>
+                    <tr><td>Network Ping Latency</td><td style="font-family: monospace; font-size:0.8rem; color:#f59e0b;">Server Node Edge Routing</td><td style="color:#34d399; font-weight:bold; font-family:monospace;">18ms (Stable)</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- MODULE 2: CHART METRICS & COMMIT TIMELINE -->
+    <div class="analytics-grid">
+        <div class="chart-card">
+            <h3>Performance Trends (Historical Accuracy)</h3>
+            <div style="position: relative; height:300px; width:100%;">
+                <canvas id="historicalTrendsChart"></canvas>
+            </div>
+        </div>
+        <div class="timeline-card"><h3>Commit History Timeline</h3><div class="timeline-container" id="timeline-container"></div></div>
+    </div>
+
+    <!-- MODULE 3: PIPELINE COMPARISON SYSTEM -->
+    <div class="comparison-card">
+        <h3>Side-by-Side Pipeline Comparison System</h3>
+        <div class="selector-row">
+            <div class="selector-group">
+                <label>Select Pipeline / Model A</label>
+                <select id="model-a-selector" onchange="runPipelineComparison()">
+                    <option value="gpt4">GPT-4o (Production v2)</option>
+                    <option value="claude3">Claude 3.5 Sonnet (Agentic)</option>
+                    <option value="llama3" selected>Llama 3 70B (Local Inference)</option>
+                </select>
+            </div>
+            <div class="selector-group">
+                <label>Select Pipeline / Model B</label>
+                <select id="model-b-selector" onchange="runPipelineComparison()">
+                    <option value="gpt4" selected>GPT-4o (Production v2)</option>
+                    <option value="claude3">Claude 3.5 Sonnet (Agentic)</option>
+                    <option value="llama3">Llama 3 70B (Local Inference)</option>
+                </select>
+            </div>
+        </div>
+        <table class="standard-table">
+            <thead><tr><th>Evaluation Metric</th><th id="table-header-model-a">Model A</th><th id="table-header-model-b">Model B</th></tr></thead>
+            <tbody>
+                <tr><td class="metric-name">Average Accuracy Rate</td><td id="comp-accuracy-a">...</td><td id="comp-accuracy-b">...</td></tr>
+                <tr><td class="metric-name">Latency / Response Speed</td><td id="comp-latency-a">...</td><td id="comp-latency-b">...</td></tr>
+                <tr><td class="metric-name">Token Cost per 1K Runs</td><td id="comp-cost-a">...</td><td id="comp-cost-b">...</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    <!-- MODULE 4: PROMPT BREAKDOWN METRICS MATRIX -->
+    <div class="prompt-card">
+        <h3>Detailed Prompt Breakdown Analytics</h3>
+        <table class="standard-table">
+            <thead><tr><th>Prompt Template ID</th><th>Target Version</th><th>Avg Input Tokens</th><th>Avg Output Tokens</th><th>Success Evaluation Rate</th></tr></thead>
+            <tbody id="prompt-matrix-body"></tbody>
+        </table>
+    </div>
+
+    <!-- MODULE 5: ASYNCHRONOUS LIVE TERMINAL ENGINE -->
+    <div class="terminal-card">
+        <h3>Real-time Live Evaluation Log Stream</h3>
+        <div class="terminal-box" id="terminal-console"></div>
+    </div>
+</div>
+
+<script>
+// SECURITY SESSION GATEWAY
+const token = localStorage.getItem('supabase_auth_token') || sessionStorage.getItem('supabase_auth_token');
+const savedUserInfo = localStorage.getItem('user_info');
+
+if (!token || !savedUserInfo) {
+    alert("Access Denied! Please login first.");
+    window.location.href = '../authentication/Login.html'; 
+} else {
+    try {
+        const userInfo = JSON.parse(savedUserInfo);
+        document.getElementById('prof-username').innerText = userInfo.username;
+        document.getElementById('prof-email').innerText = userInfo.email;
+        document.getElementById('prof-status').innerText = userInfo.sessionStatus;
+        document.getElementById('prof-verified').innerText = new Date(userInfo.lastLogin).toLocaleTimeString();
+        document.getElementById('welcome-name').innerText = userInfo.username;
+        document.getElementById('session-badge').innerText = `Session: ${userInfo.sessionStatus}`;
+        
+        fetchPipelineMetrics();
+        renderCicdWorkflowStatus();
+        renderAIEvaluationMetrics();
+        renderComponentTracingTree();
+        initializeHistoricalAnalytics();
+        runPipelineComparison();
+        renderPromptBreakdownMetrics();
+        startLiveLogSimulationStream();
+    } catch (e) { window.location.href = '../authentication/Login.html'; }
+}
+
+async function fetchPipelineMetrics() {
+    const mockDbFetch = { total_evaluations: 1248, average_accuracy: 94.2, active_pipelines: 4 };
+    document.getElementById('metric-total').innerText = Number(mockDbFetch.total_evaluations).toLocaleString();
+    document.getElementById('metric-accuracy').innerText = mockDbFetch.average_accuracy.toFixed(1) + '%';
+    document.getElementById('metric-pipelines').innerText = mockDbFetch.active_pipelines;
+}
+
+function renderCicdWorkflowStatus() {
+    const mockWorkflows = [
+        { job: "llm-eval-accuracy-check", actor: "commit: 7e1a5b3", status: "success" },
+        { job: "run-hallucination-guard", actor: "commit: 7e1a5b3", status: "running" },
+        { job: "langfuse-trace-sync", actor: "PR #24 hook", status: "success" },
+        { job: "deploy-cloud-gateway", actor: "schedule trigger", status: "failed" }
+    ];
+    const tableBody = document.getElementById('cicd-workflow-body');
+    if(tableBody) {
+        tableBody.innerHTML = '';
+        mockWorkflows.forEach(row => {
+            let pillClass = "status-success";
+            if (row.status === "running") pillClass = "status-running";
+            if (row.status === "failed") pillClass = "status-failed";
+            tableBody.insertAdjacentHTML('beforeend', `
+                <tr>
+                    <td style="font-family: monospace; font-weight: 600;">${row.job}</td>
+                    <td style="color: #94a3b8;">${row.actor}</td>
+                    <td><span class="status-pill ${pillClass}">${row.status}</span></td>
+                </tr>
+            `);
+        });
+    }
+}
+
+function renderAIEvaluationMetrics() {
+    try {
+        const gevalData = [
+            { criteria: "Coherence / Flow", score: 0.96, text: "Output statements remain logically connected with smooth topic shifts.", state: "score-high" },
+            { criteria: "Conciseness", score: 0.88, text: "Minor verbose redundant phrasing noticed in agent mesh loop context.", state: "score-med" },
+            { criteria: "Safety & Toxicity", score: 1.00, text: "Zero boundary-break triggers or safe-policy exceptions mapped.", state: "score-high" }
+        ];
+        const gevalBody = document.getElementById('geval-metrics-body');
+        if (gevalBody) {
+            gevalBody.innerHTML = '';
+            gevalData.forEach(row => {
+                gevalBody.insertAdjacentHTML('beforeend', `
+                    <tr>
+                        <td style="font-weight: 600; color: #f8fafc;">${row.criteria}</td>
+                        <td><span class="eval-score-badge ${row.state}">${row.score.toFixed(2)}</span></td>
+                        <td><span style="color: #e2e8f0;">Passed</span><span class="reasoning-text">${row.text}</span></td>
+                    </tr>
+                `);
+            });
+        }
+
+        const hallucinationData = [
+            { model: "GPT-4o Pipeline", faith: "98.4%", relevance: "96.2%", status: "Passed", pill: "status-success" },
+            { model: "Claude 3.5 Sonnet", faith: "99.1%", relevance: "97.0%", status: "Passed", pill: "status-success" },
+            { model: "Llama 3 70B Local", faith: "89.2%", relevance: "91.1%", status: "Warning", pill: "status-running" }
+        ];
+        const hallBody = document.getElementById('hallucination-metrics-body');
+        if (hallBody) {
+            hallBody.innerHTML = '';
+            hallucinationData.forEach(row => {
+                hallBody.insertAdjacentHTML('beforeend', `
+                    <tr>
+                        <td style="font-family: monospace; font-weight: 600; color: #38bdf8;">${row.model}</td>
+                        <td style="color: #34d399; font-weight: bold;">${row.faith}</td>
+                        <td style="color: #a78bfa; font-weight: bold;">${row.relevance}</td>
+                        <td><span class="status-pill ${row.pill}">${row.status}</span></td>
+                    </tr>
+                `);
+            });
+        }
+    } catch (err) { console.error(err); }
+}
+
+function renderComponentTracingTree() {
+    try {
+        const activeSteps = [
+            { name: "Input Prompt Parser Node", duration: "12ms" },
+            { name: "ChromaDB Vector Retrieval Vector Index", duration: "84ms" },
+            { name: "LLM Generation Token Gateway", duration: "144ms" }
+        ];
+        const treeContainer = document.getElementById('tracing-tree-body');
+        if(treeContainer) {
+            treeContainer.innerHTML = '';
+            activeSteps.forEach(step => {
+                treeContainer.insertAdjacentHTML('beforeend', `
+                    <div class="trace-step">
+                        <div class="trace-info">
+                            <span class="trace-name">${step.name}</span>
+                            <span class="trace-duration">Latency execution span: ${step.duration}</span>
+                        </div>
+                        <span class="trace-status">Synced</span>
+                    </div>
+                `);
+            });
+        }
+    } catch(e) { console.error(e); }
+}
+
+async function initializeHistoricalAnalytics() {
+    const historicalData = [
+        { commit: "feat: update prompt template (c1a3f2b)", date: "2026-06-28", accuracy: 89.5 },
+        { commit: "fix: handle empty context edge case (9b2e4f1)", date: "2026-06-29", accuracy: 91.2 },
+        { commit: "refactor: optimize embeddings index (4f82d9a)", date: "2026-06-30", accuracy: 93.0 },
+        { commit: "feat: add hybrid search retrieval (7e1a5b3)", date: "2026-07-01", accuracy: 94.2 }
+    ];
+    const ctx = document.getElementById('historicalTrendsChart').getContext('2d');
+    new Chart(ctx, {
+        type: 'line',
+        data: {
+            labels: historicalData.map(item => item.date),
+            datasets: [{
+                label: 'Pipeline Accuracy (%)',
+                data: historicalData.map(item => item.accuracy),
+                borderColor: '#38bdf8',
+                backgroundColor: 'rgba(56, 189, 248, 0.1)',
+                borderWidth: 2, tension: 0.3, fill: true
+            }]
+        },
+        options: { responsive: true, maintainAspectRatio: false }
+    });
+    const timelineContainer = document.getElementById('timeline-container');
+    if(timelineContainer) {
+        timelineContainer.innerHTML = '';
+        historicalData.reverse().forEach(item => {
+            timelineContainer.insertAdjacentHTML('beforeend', `
+                <div class="timeline-item">
+                    <div class="timeline-commit">${item.commit}</div>
+                    <div class="timeline-meta">Evaluated on: ${item.date}</div>
+                    <div class="timeline-metrics">Accuracy: ${item.accuracy}%</div>
+                </div>
+            `);
+        });
+    }
+}
+
+function runPipelineComparison() {
+    const modelA = document.getElementById('model-a-selector').value;
+    const modelB = document.getElementById('model-b-selector').value;
+    const titleMapping = { gpt4: "GPT-4o (Production)", claude3: "Claude 3.5 Sonnet", llama3: "Llama 3 70B (Local)" };
+    const databaseMockRegistry = {
+        gpt4: { accuracy: 95.8, latency: "240ms", cost: "$0.015", raw_acc: 95.8 },
+        claude3: { accuracy: 96.4, latency: "310ms", cost: "$0.030", raw_acc: 96.4 },
+        llama3: { accuracy: 91.1, latency: "110ms", cost: "$0.000", raw_acc: 91.1 }
+    };
+    document.getElementById('table-header-model-a').innerText = titleMapping[modelA];
+    document.getElementById('table-header-model-b').innerText = titleMapping[modelB];
+    
+    const dataA = databaseMockRegistry[modelA];
+    const dataB = databaseMockRegistry[modelB];
+    document.getElementById('comp-accuracy-a').innerText = dataA.accuracy + "%";
+    document.getElementById('comp-accuracy-b').innerText = dataB.accuracy + "%";
+    document.getElementById('comp-latency-a').innerText = dataA.latency;
+    document.getElementById('comp-latency-b').innerText = dataB.latency;
+    document.getElementById('comp-cost-a').innerText = dataA.cost;
+    document.getElementById('comp-cost-b').innerText = dataB.cost;
+    
+    document.getElementById('comp-accuracy-a').className = "";
+    document.getElementById('comp-accuracy-b').className = "";
+    if (dataA.raw_acc > dataB.raw_acc) document.getElementById('comp-accuracy-a').className = "highlight-win";
+    else if (dataB.raw_acc > dataA.raw_acc) document.getElementById('comp-accuracy-b').className = "highlight-win";
+}
+
+function renderPromptBreakdownMetrics() {
+    const promptRegistryDataset = [
+        { templateId: "structured_eval_core", version: "v2.4.1", inputTokens: 420, outputTokens: 180, rate: "96.2%" },
+        { templateId: "few_shot_agent_mesh", version: "v1.0.8", inputTokens: 1250, outputTokens: 512, rate: "94.5%" },
+        { templateId: "zero_shot_fallback", version: "v3.1.0", inputTokens: 280, outputTokens: 95, rate: "88.1%" }
+    ];
+    const targetTableBody = document.getElementById('prompt-matrix-body');
+    if(targetTableBody) {
+        targetTableBody.innerHTML = '';
+        promptRegistryDataset.forEach(row => {
+            targetTableBody.insertAdjacentHTML('beforeend', `
+                <tr>
+                    <td class="template-name">${row.templateId}</td>
+                    <td style="color: #94a3b8; font-weight:600;">${row.version}</td>
+                    <td><span class="token-badge-in">${row.inputTokens} tkn</span></td>
+                    <td><span class="token-badge-out">${row.outputTokens} tkn</span></td>
+                    <td style="color: #38bdf8; font-weight: bold;">${row.rate}</td>
+                </tr>
+            `);
+        });
+    }
+}
+
+function startLiveLogSimulationStream() {
+    const consoleBox = document.getElementById('terminal-console');
+    const logsPool = [
+        { type: "info", text: "Evaluating cloud infrastructure threshold parameters..." },
+        { type: "success", text: "SUCCESS: Enterprise Quality Gates assertions checked completely." },
+        { type: "info", text: "Pinging route api.eval-pipeline.cloud edge data routing nodes (18ms)." }
+    ];
+    if(consoleBox) {
+        setInterval(() => {
+            const randomIndex = Math.floor(Math.random() * logsPool.length);
+            const selectedLog = logsPool[randomIndex];
+            const timestamp = new Date().toLocaleTimeString();
+            let typeClass = "log-info"; let prefixText = "INFO:";
+            if (selectedLog.type === "warn") { typeClass = "log-warn"; prefixText = "WARN:"; }
+            if (selectedLog.type === "success") { typeClass = "log-success"; prefixText = "SUCCESS:"; }
+            
+            consoleBox.insertAdjacentHTML('beforeend', `
+                <div><span class="log-timestamp">[${timestamp}]</span><span class="${typeClass}">${prefixText}</span> ${selectedLog.text}</div>
+            `);
+            consoleBox.scrollTop = consoleBox.scrollHeight;
+        }, 3000);
+    }
+}
+</script>
+</body>
+</html>

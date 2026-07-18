@@ -2,6 +2,8 @@ import { supabase } from '../config/config.js';
 import fs from 'fs';
 import path from 'path';
 
+console.log("✅ dashboardController LOADED");
+
 const LOG_FILE_PATH = path.join(process.cwd(), 'pipeline_telemetry_traces.json');
 
 /**
@@ -9,14 +11,26 @@ const LOG_FILE_PATH = path.join(process.cwd(), 'pipeline_telemetry_traces.json')
  * Strictly replaces mock data matrices with genuine aggregate counts and fetch safety guards
  */
 export const getDashboardMetrics = async (req, res) => {
+  console.log("✅ getDashboardMetrics CALLED");
+
   try {
     let totalPlatformUsers = 0;
 
     // 1. Fetch live authenticated user identities volume count with absolute catch safety guards
     try {
-      const { count: fetchedUserCount, error: userCountError } = await supabase
-        .from('users')
-        .select('*', { count: 'exact', head: true });
+      const { data, count, error } = await supabase
+  .from('users')
+  .select('*', { count: 'exact' });
+
+console.log("DATA =", data);
+console.log("COUNT =", count);
+console.log("ERROR =", error);
+
+if (error) throw error;
+
+totalPlatformUsers = count;
+        console.log("User Count:", fetchedUserCount);
+        console.log("User Count Error:", userCountError);
 
       if (!userCountError && fetchedUserCount !== null) {
         totalPlatformUsers = fetchedUserCount;

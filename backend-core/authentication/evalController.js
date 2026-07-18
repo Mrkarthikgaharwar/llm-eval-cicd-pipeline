@@ -1,4 +1,4 @@
-import { runEvaluationSuite } from '../utils/evalEngine.js';
+import { runAutomatedLLMEvaluation } from '../utils/evalEngine.js';
 import { captureTraceLog } from '../monitoring/telemetryTracker.js';
 
 // Controller handler to orchestrate advanced evaluation metrics with enterprise telemetry logging
@@ -21,14 +21,18 @@ export const runSuiteOrchestrator = async (req, res) => {
     }
 
     // Invoke the analytical metrics execution pipeline
-    const report = await runEvaluationSuite(testCases, modelConfig);
+    const report = await runAutomatedLLMEvaluation(
+    testCases,
+    modelConfig,
+    {}
+);
 
     // 2. Capture dynamic Output Telemetry Trace & Localization Logging
     captureTraceLog(
       'EvaluationOrchestrator', 
       'PIPELINE_EXECUTION_COMPLETE', 
       { traceId: initialTraceId }, 
-      { executionSummary: report.orchestrationConfig, status: 'PROCESSED' }
+      { executionSummary: report.quality_gates, }
     );
 
     return res.status(200).json({ status: "success", traceId: initialTraceId, report });

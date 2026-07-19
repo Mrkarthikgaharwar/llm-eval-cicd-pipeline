@@ -172,14 +172,16 @@
           });
 
           const data = await response.json();
-          
-          if (!response.ok) {
-            throw new Error(data.error || 'Server rejected credentials parameters.');
+
+          if (!response.ok || data.status !== "success" || !data.user) {
+            throw new Error(data.error || 'Invalid email or password.');
           }
 
-          // FIXED PARAMETER CHECK: Fallback token if session payload is structurally empty
-          const activeToken = (data.session && data.session.access_token) ? data.session.access_token : "secure_prod_runtime_bypass_token";
-          const userEmail = (data.user && data.user.email) ? data.user.email : email;
+          // NOTE: Backend does not yet issue a real session/JWT token (see authController.js).
+          // This is a temporary client-side session marker for a CONFIRMED successful login only.
+          // TODO (tracked separately): replace with a real signed session token from the backend.
+          const activeToken = `session_${data.user.id}_${Date.now()}`;
+          const userEmail = data.user.email;
 
           successMessage.innerText = "Login Successful! Redirecting to panel...";
           localStorage.setItem('supabase_auth_token', activeToken);
@@ -195,21 +197,11 @@
           }, 1000);
 
         } catch (err) {
-          // SAFE CRASH OVERRIDE FOR CONTINUOUS E2E VERIFICATION
-          successMessage.style.display = 'block';
-          successMessage.innerText = "Secure Gateway Sync Established. Access Granted.";
-          
-          localStorage.setItem('supabase_auth_token', 'secure_prod_runtime_bypass_token');
-          localStorage.setItem('user_info', JSON.stringify({
-            username: email.split('@')[0],
-            email: email,
-            sessionStatus: 'Active',
-            lastLogin: new Date().toISOString()
-          }));
-          
-          setTimeout(() => {
-             window.location.href = '../dashboard/Dashboard.html';
-          }, 1000);
+          // Login genuinely failed — show the real error and stay on this page.
+          // Do NOT grant access here. No token, no redirect.
+          errorMessage.style.display = 'block';
+          errorMessage.innerText = err.message || 'Login failed. Please check your credentials and try again.';
+          successMessage.style.display = 'none';
         }
       });
     }

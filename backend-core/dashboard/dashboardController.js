@@ -1,49 +1,91 @@
 import { supabase } from '../config/config.js';
+import fs from 'fs';
+import path from 'path';
+
+const LOG_FILE_PATH = path.join(process.cwd(), 'pipeline_telemetry_traces.json');
 
 /**
- * PRODUCTION CONTRACT RESILIENT WRAPPER: Fetches dynamic metrics from live database layer
- * Directly targeted by frontend fetchPipelineMetrics API hooks.
+ * Fetches real production analytics metrics for the dashboard's top summary
+ * cards. Every field below is derived from either Supabase or the local
+ * telemetry trace log — nothing here is hardcoded or randomly generated.
+ *
+ * Response shape (matches what Dashboard.html's fetchPipelineMetrics expects):
+ * {
+ *   total_evaluations: number,   // sum of test cases actually run via /api/eval/run
+ *   average_accuracy: number,    // mean quality-gate pass rate across completed runs
+ *   active_pipelines: number,    // distinct model configs evaluated
+ *   metricsCounters: { registeredUsersCount, activeTelemetryTracesStored }
+ * }
  */
 export const getDashboardMetrics = async (req, res) => {
+  try {
+    // 1. Real registered user count from Supabase (no fake fallback number)
+    let totalPlatformUsers = 0;
     try {
-        console.log("[METRICS GATEWAY] Parsing production table transaction scopes...");
+      const { count: fetchedUserCount, error: userCountError } = await supabase
+        .from('users')
+        .select('*', { count: 'exact', head: true });
 
-        // 1. Fetch live user registrations aggregate count
-        const { count: usersCount, error: userError } = await supabase
-            .from('users')
-            .select('*', { count: 'exact', head: true });
-
-        if (userError) throw userError;
-
-        // 2. Fetch live telemetry trace arrays stream count
-        const { count: tracesCount, error: traceError } = await supabase
-            .from('telemetry_traces')
-            .select('*', { count: 'exact', head: true });
-
-        if (traceError) throw traceError;
-
-        // 3. Compute structural data values into enterprise runtime contract payload
-        // Fallback to active base integer layers if table metrics are natively zero initialized
-        const dynamicPayload = {
-            systemHealthStatus: "OPERATIONAL",
-            metricsCounters: {
-                registeredUsersCount: usersCount || 4, // Real table count bound
-                activeTelemetryTracesStored: tracesCount || 1248, // Real telemetry metrics bound
-                pipelineSuccessRatePercentage: 94.2 // Dynamic system pipeline evaluation index
-            },
-            visualChartsContext: {
-                graphLabel: "Real-Time LLM Evaluation Grounding Index",
-                timeSeriesCoordinates: [89.5, 91.2, 93.0, 94.2]
-            }
-        };
-
-        return res.status(200).json(dynamicPayload);
-
-    } catch (error) {
-        console.error("CRITICAL TRANSACT EXCEPTION IN DASHBOARD GATEWAY:", error.message);
-        return res.status(500).json({
-            error: "Failed to resolve production live analytics database elements.",
-            details: error.message
-        });
+      if (!userCountError && fetchedUserCount !== null) {
+        totalPlatformUsers = fetchedUserCount;
+      } else {
+        console.warn('⚠️ [DASHBOARD AGENT] Supabase user count query returned an error; defaulting to 0.');
+      }
+    } catch (fetchNetworkError) {
+      console.error('⚠️ [DASHBOARD NETWORKING] Could not reach Supabase for user count:', fetchNetworkError.message);
     }
+
+    // 2. Read local telemetry trace log (written by telemetryTracker.js)
+    let traceDataEntries = [];
+    if (fs.existsSync(LOG_FILE_PATH)) {
+      const dataContent = fs.readFileSync(LOG_FILE_PATH, 'utf8');
+      traceDataEntries = JSON.parse(dataContent || '[]');
+    }
+
+    const completedEvalTraces = traceDataEntries.filter(
+      (t) => t.component === 'EvaluationOrchestrator' && t.action === 'PIPELINE_EXECUTION_COMPLETE'
+    );
+    const initiationTraces = traceDataEntries.filter(
+      (t) => t.component === 'EvaluationOrchestrator' && t.action === 'PIPELINE_INITIATION'
+    );
+
+    // 3. Total Evaluations = sum of test cases across all completed eval runs
+    const totalEvaluations = completedEvalTraces.reduce((sum, t) => {
+      const casesInRun = t.payloads?.output?.executionSummary?.totalCases || 0;
+      return sum + casesInRun;
+    }, 0);
+
+    // 4. Average Accuracy = mean quality-gate pass rate across completed eval runs
+    const passRates = completedEvalTraces
+      .map((t) => t.payloads?.output?.executionSummary?.passRate)
+      .filter((rate) => typeof rate === 'number');
+    const averageAccuracy = passRates.length > 0
+      ? parseFloat((passRates.reduce((a, b) => a + b, 0) / passRates.length).toFixed(2))
+      : 0;
+
+    // 5. Active Pipelines = distinct models actually evaluated
+    const distinctModels = new Set(
+      initiationTraces
+        .map((t) => t.payloads?.input?.modelConfig?.model)
+        .filter(Boolean)
+    );
+    const activePipelines = distinctModels.size;
+
+    const productionAnalyticsPayload = {
+      systemHealthStatus: "OPERATIONAL",
+      total_evaluations: totalEvaluations,
+      average_accuracy: averageAccuracy,
+      active_pipelines: activePipelines,
+      metricsCounters: {
+        registeredUsersCount: totalPlatformUsers,
+        activeTelemetryTracesStored: traceDataEntries.length
+      }
+    };
+
+    console.log('[DASHBOARD CONTROLLER] Dispatched real aggregated dashboard metrics.');
+    return res.status(200).json(productionAnalyticsPayload);
+  } catch (error) {
+    console.error('[DASHBOARD CRASH] Failed to compute dashboard metrics:', error.message);
+    return res.status(500).json({ error: "Analytical metrics extraction failed.", detail: error.message });
+  }
 };

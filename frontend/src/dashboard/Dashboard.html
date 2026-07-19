@@ -392,32 +392,25 @@ async function fetchPipelineMetrics(backendUrl) {
     try {
         const response = await fetch(`${backendUrl}/api/dashboard/metrics`, {
             method: 'GET',
-            headers: { 
-                'Authorization': `Bearer ${token}`,
-                'Accept': 'application/json' 
-            }
+            headers: { 'Accept': 'application/json' }
         });
-        
+
         if (!response.ok) {
-            throw new Error(`HTTP Error Status: ${response.status}`);
+            throw new Error(`Dashboard metrics request failed with status ${response.status}`);
         }
-        
+
         const data = await response.json();
-        
-        // Agar data milta hai toh real server metrics ko UI par bind karein
-        if (data && data.metricsCounters) {
-            document.getElementById('metric-total').innerText = Number(data.metricsCounters.activeTelemetryTracesStored).toLocaleString();
-            document.getElementById('metric-accuracy').innerText = data.metricsCounters.pipelineSuccessRatePercentage.toFixed(1) + '%';
-            document.getElementById('metric-pipelines').innerText = data.metricsCounters.registeredUsersCount;
-        } else {
-            throw new Error("Invalid structure returned from operational data route.");
-        }
+
+        document.getElementById('metric-total').innerText = Number(data.total_evaluations || 0).toLocaleString();
+        document.getElementById('metric-accuracy').innerText = Number(data.average_accuracy || 0).toFixed(1) + '%';
+        document.getElementById('metric-pipelines').innerText = data.active_pipelines ?? 0;
     } catch (err) {
-        console.error("Critical Connection Alert: Dashboard Pipeline Disconnected.", err);
-        // Bypasses khatam—ab agar error aayega toh seedhe screen par dikhega
-        document.getElementById('metric-total').innerText = "ERROR (Offline)";
-        document.getElementById('metric-accuracy').innerText = "0.0%";
-        document.getElementById('metric-pipelines').innerText = "ERROR";
+        // Genuine failure to reach the backend — show a real "no data" state,
+        // not fabricated numbers.
+        console.error('[DASHBOARD] Could not load live metrics:', err.message);
+        document.getElementById('metric-total').innerText = "--";
+        document.getElementById('metric-accuracy').innerText = "--";
+        document.getElementById('metric-pipelines').innerText = "--";
     }
 }
 

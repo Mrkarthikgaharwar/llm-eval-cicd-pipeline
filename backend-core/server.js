@@ -3,7 +3,7 @@ import cors from 'cors';
 import { supabase } from './config/config.js';
 import { handleLogin, handleSignup, handleForgotPassword } from './authentication/authController.js';
 import { runSuiteOrchestrator } from './authentication/evalController.js';
-import { getDashboardMetrics } from './dashboard/dashboardController.js';
+import { getDashboardMetrics, getEvaluationDetails } from './dashboard/dashboardController.js';
 
 // ========================================================
 // PHASE 6: ARIZE PHOENIX OPENTELEMETRY TRACING ENGINE INITIALIZATION
@@ -56,6 +56,7 @@ app.post('/api/eval/run', runSuiteOrchestrator);
 
 // Bind live dashboard metrics system dynamic query pipeline
 app.get('/api/dashboard/metrics', getDashboardMetrics);
+app.get('/api/dashboard/evaluation-details', getEvaluationDetails);
 
 // Start the enterprise gateway loop listener
 app.listen(PORT, '0.0.0.0', () => {

@@ -89,3 +89,99 @@ export const getDashboardMetrics = async (req, res) => {
     return res.status(500).json({ error: "Analytical metrics extraction failed.", detail: error.message });
   }
 };
+
+/**
+ * Real (non-mock) evaluation detail data for the G-Eval table, the
+ * hallucination/faithfulness/relevance table, the historical accuracy
+ * trend chart, and the model comparison tool. Everything here is derived
+ * from the local telemetry trace log — if no evaluations have run yet,
+ * each section comes back as an empty array rather than fabricated rows.
+ */
+export const getEvaluationDetails = async (req, res) => {
+  try {
+    let traceDataEntries = [];
+    if (fs.existsSync(LOG_FILE_PATH)) {
+      const dataContent = fs.readFileSync(LOG_FILE_PATH, 'utf8');
+      traceDataEntries = JSON.parse(dataContent || '[]');
+    }
+
+    const completedEvalTraces = traceDataEntries
+      .filter((t) => t.component === 'EvaluationOrchestrator' && t.action === 'PIPELINE_EXECUTION_COMPLETE')
+      .sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+
+    // ---- G-Eval table + Hallucination/Faithfulness/Relevance table: from the latest run ----
+    let gEvalMetrics = [];
+    let hallucinationTable = [];
+
+    const latestRun = completedEvalTraces[completedEvalTraces.length - 1];
+    const latestCases = latestRun?.payloads?.output?.caseResults || [];
+
+    if (latestCases.length > 0) {
+      const avg = (key) =>
+        parseFloat((latestCases.reduce((sum, c) => sum + (c.metrics?.[key] || 0), 0) / latestCases.length).toFixed(2));
+
+      gEvalMetrics = [
+        {
+          criteria: 'Coherence / Flow',
+          score: avg('coherence'),
+          verdict: avg('coherence') >= 0.7 ? 'Passed' : 'Needs Review',
+          text: `Averaged across ${latestCases.length} case(s) from the most recent evaluation run.`
+        },
+        {
+          criteria: 'Conciseness',
+          score: avg('conciseness'),
+          verdict: avg('conciseness') >= 0.7 ? 'Passed' : 'Needs Review',
+          text: `Averaged across ${latestCases.length} case(s) from the most recent evaluation run.`
+        },
+        {
+          criteria: 'Safety & Toxicity',
+          score: avg('safety'),
+          verdict: avg('safety') >= 0.7 ? 'Passed' : 'Needs Review',
+          text: `Averaged across ${latestCases.length} case(s) from the most recent evaluation run.`
+        }
+      ];
+
+      const modelName = latestRun?.payloads?.output?.executionSummary?.modelConfig?.model || 'unknown-model';
+      hallucinationTable = latestCases.map((c, idx) => ({
+        target: `${modelName} — case ${idx + 1}`,
+        faithfulness: ((c.metrics?.faithfulness || 0) * 100).toFixed(1) + '%',
+        answerRelevance: ((c.metrics?.answer_relevance || 0) * 100).toFixed(1) + '%',
+        status: c.verdict === 'PASSED' ? 'Passed' : 'Warning'
+      }));
+    }
+
+    // ---- Performance trend: real pass-rate history across all runs ----
+    const performanceTrend = completedEvalTraces.map((t) => ({
+      date: t.timestamp ? t.timestamp.slice(0, 10) : 'unknown',
+      accuracy: t.payloads?.output?.executionSummary?.passRate ?? 0
+    }));
+
+    // ---- Model comparison: real average accuracy + case count per model actually evaluated ----
+    const modelStats = {};
+    completedEvalTraces.forEach((t) => {
+      const model = t.payloads?.output?.executionSummary?.modelConfig?.model;
+      const passRate = t.payloads?.output?.executionSummary?.passRate;
+      const cases = t.payloads?.output?.executionSummary?.totalCases || 0;
+      if (!model) return;
+      if (!modelStats[model]) modelStats[model] = { totalPassRateSum: 0, runs: 0, totalCases: 0 };
+      modelStats[model].totalPassRateSum += (passRate || 0);
+      modelStats[model].runs += 1;
+      modelStats[model].totalCases += cases;
+    });
+    const modelComparison = Object.entries(modelStats).map(([model, stat]) => ({
+      model,
+      averageAccuracy: parseFloat((stat.totalPassRateSum / stat.runs).toFixed(2)),
+      totalCasesRun: stat.totalCases
+    }));
+
+    return res.status(200).json({
+      gEvalMetrics,
+      hallucinationTable,
+      performanceTrend,
+      modelComparison
+    });
+  } catch (error) {
+    console.error('[DASHBOARD CRASH] Failed to compute evaluation details:', error.message);
+    return res.status(500).json({ error: "Evaluation detail extraction failed.", detail: error.message });
+  }
+};

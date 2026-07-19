@@ -35,6 +35,13 @@ export const runSuiteOrchestrator = async (req, res) => {
           totalCases: report.summary.totalCases,
           passRate: report.summary.passRate
         },
+        // Per-case metrics (faithfulness, hallucination, coherence, etc.) so the
+        // dashboard can render real G-Eval / hallucination tables instead of mock data.
+        caseResults: report.results.map((r) => ({
+          input: (r.input || '').slice(0, 80),
+          metrics: r.metrics,
+          verdict: r.quality_gates.verdict
+        })),
         status: 'PROCESSED'
       }
     );

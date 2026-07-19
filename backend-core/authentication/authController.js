@@ -1,5 +1,5 @@
 import { supabase } from '../config/config.js';
-import { hashSecurePassword } from '../utils/cryptoHelper.js';
+import { hashSecurePassword, verifyPassword } from '../utils/cryptoHelper.js';
 import { validateRegistrationInput, validateLoginInput } from '../utils/authValidation.js';
 
 // 1. Production Sign Up with Hashing & Duplicate Prevention
@@ -24,8 +24,8 @@ export const handleSignup = async (req, res) => {
       return res.status(409).json({ error: "Identity integrity error: Username or Email already registered." });
     }
 
-    // Secure Hashing Conversion
-    const encryptedPassword = hashSecurePassword(password);
+    // Secure Hashing Conversion (bcrypt, random per-password salt)
+    const encryptedPassword = await hashSecurePassword(password);
 
     // Save into enterprise target table storage
     const { data: newUser, error: insertError } = await supabase
@@ -51,19 +51,29 @@ export const handleLogin = async (req, res) => {
       return res.status(400).json({ error: validation.message });
     }
 
-    const hashedCheck = hashSecurePassword(password);
-
-    // Retrieve and verify cryptographic tokens compatibility match
+    // Fetch by email only — bcrypt hashes are non-deterministic, so we
+    // can't query by a matching hash the way the old HMAC scheme did.
     const { data: user, error: fetchError } = await supabase
       .from('users')
       .select('*')
       .eq('email', email)
-      .eq('password_hash', hashedCheck)
       .maybeSingle();
 
     if (fetchError) throw fetchError;
     if (!user) {
       return res.status(401).json({ error: "Invalid credential combination metadata targets." });
+    }
+
+    const { valid, needsRehash } = await verifyPassword(password, user.password_hash);
+    if (!valid) {
+      return res.status(401).json({ error: "Invalid credential combination metadata targets." });
+    }
+
+    // Transparent migration: if this account still has an old legacy hash,
+    // upgrade it to bcrypt now that we've confirmed the password is correct.
+    if (needsRehash) {
+      const upgradedHash = await hashSecurePassword(password);
+      await supabase.from('users').update({ password_hash: upgradedHash }).eq('id', user.id);
     }
 
     return res.status(200).json({ status: "success", user: { id: user.id, email: user.email, username: user.username } });

@@ -19,13 +19,35 @@ console.log(`[Phoenix Tracer] Collector Node established at ${mockPhoenixTelemet
 const app = express();
 const PORT = process.env.PORT || 5000;
 
-// PRODUCTION AUDIT FIX: Permissive configuration with explicit preflight response handling
+// Restrict cross-origin access to known frontend origins instead of '*'.
+// '*' combined with credentials:true is both invalid per the CORS spec
+// (browsers reject it) and unnecessarily permissive.
+const ALLOWED_ORIGINS = [
+  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+  'https://llm-eval-cicd-pipeline.vercel.app',
+  'null', // browsers send this for file:// pages — convenient for local testing, remove if not needed
+];
+
 app.use(cors({
-  origin: '*',
+  origin: (incomingOrigin, callback) => {
+    // Allow tools with no Origin header (curl, server-to-server, health checks)
+    if (!incomingOrigin) return callback(null, true);
+    if (ALLOWED_ORIGINS.includes(incomingOrigin)) return callback(null, true);
+    return callback(new Error(`CORS: origin ${incomingOrigin} is not allowed`));
+  },
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true
 }));
+
+// Clean JSON response for CORS rejections instead of a raw 500 crash page.
+app.use((err, req, res, next) => {
+  if (err && err.message && err.message.startsWith('CORS:')) {
+    return res.status(403).json({ error: 'Origin not allowed.' });
+  }
+  next(err);
+});
 
 app.use(express.json());
 

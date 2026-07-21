@@ -355,10 +355,7 @@ document.getElementById('welcome-name').innerText = userInfo.username || 'Evalua
 document.getElementById('session-badge').innerText = `Session: ${userInfo.sessionStatus || 'Active'}`;
 
 // Dynamic Host Resolver Supporting Localhost, 127.0.0.1 and Live Server Port
-const hostname = window.location.hostname;
-const BACKEND_URL = (hostname === 'localhost' || hostname === '127.0.0.1' || hostname === '')
-  ? 'http://localhost:5000'
-  : 'https://llm-eval-cicd-pipeline-1.onrender.com';
+const BACKEND_URL = 'https://llm-eval-backend-v2.onrender.com';
 
 console.log("[DASHBOARD INITIALIZER] Connected Backend Gateway:", BACKEND_URL);
 

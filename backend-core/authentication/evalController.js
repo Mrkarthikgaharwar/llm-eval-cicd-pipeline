@@ -1,54 +1,64 @@
-import { runEvaluationSuite } from '../utils/evalEngine.js';
-import { captureTraceLog } from '../monitoring/telemetryTracker.js';
+import { supabase } from '../config/config.js';
+import { executeInference, calculateEvaluationMetrics } from '../utils/evalEngine.js';
 
-// Controller handler to orchestrate advanced evaluation metrics with enterprise telemetry logging
-export const runSuiteOrchestrator = async (req, res) => {
-  const { testCases, modelConfig } = req.body;
-  
-  // 1. Capture dynamic Input Telemetry Trace Logging
-  const initialTraceId = await captureTraceLog(
-    'EvaluationOrchestrator', 
-    'PIPELINE_INITIATION', 
-    { totalCases: testCases?.length || 0, modelConfig }, 
-    null
-  );
-
+export async function runSuiteOrchestrator(req, res) {
   try {
-    if (!testCases || !modelConfig || !Array.isArray(testCases)) {
-      const errorMsg = "Missing or invalid orchestration parameters: testCases (array) and modelConfig are required.";
-      await captureTraceLog('EvaluationOrchestrator', 'VALIDATION_FAILURE', req.body, { error: errorMsg }, 'FAILED');
-      return res.status(400).json({ error: errorMsg });
+    const { prompt, modelConfig, groundTruth } = req.body;
+
+    if (!prompt) {
+      return res.status(400).json({ success: false, error: 'Prompt is required for evaluation execution.' });
     }
 
-    // Invoke the analytical metrics execution pipeline
-    const report = await runEvaluationSuite(testCases, modelConfig);
+    const selectedModel = modelConfig?.model || 'gemini-1.5-pro';
+    console.log(`[ORCHESTRATOR] Initiating test run for model: ${selectedModel}`);
 
-    // 2. Capture dynamic Output Telemetry Trace & Localization Logging
-    // Includes real totalCases/passRate so the dashboard can aggregate genuine metrics.
-    await captureTraceLog(
-      'EvaluationOrchestrator', 
-      'PIPELINE_EXECUTION_COMPLETE', 
-      { traceId: initialTraceId }, 
-      {
-        executionSummary: {
-          ...report.orchestrationConfig,
-          totalCases: report.summary.totalCases,
-          passRate: report.summary.passRate
-        },
-        // Per-case metrics (faithfulness, hallucination, coherence, etc.) so the
-        // dashboard can render real G-Eval / hallucination tables instead of mock data.
-        caseResults: report.results.map((r) => ({
-          input: (r.input || '').slice(0, 80),
-          metrics: r.metrics,
-          verdict: r.quality_gates.verdict
-        })),
-        status: 'PROCESSED'
-      }
-    );
+    // 1. Multi-LLM Inference Execution
+    const inferenceResult = await executeInference(prompt, modelConfig);
 
-    return res.status(200).json({ status: "success", traceId: initialTraceId, report });
-  } catch (error) {
-    await captureTraceLog('EvaluationOrchestrator', 'RUNTIME_EXECUTION_CRASH', { traceId: initialTraceId }, { fatalError: error.message }, 'FAILED');
-    return res.status(500).json({ error: error.message });
+    // 2. Metrics Calculation (G-Eval, Hallucination, Faithfulness, Security)
+    const metrics = calculateEvaluationMetrics(prompt, inferenceResult.output, groundTruth);
+
+    // 3. Log to Supabase Database
+    const { data: logEntry, error: dbError } = await supabase
+      .from('evaluation_logs')
+      .insert([
+        {
+          prompt_text: prompt,
+          response_output: inferenceResult.output,
+          model_name: selectedModel,
+          accuracy: metrics.accuracy,
+          geval_cot_score: metrics.gEvalCoTScore,
+          hallucination_score: metrics.hallucinationScore,
+          faithfulness_score: metrics.faithfulnessScore,
+          answer_relevance: metrics.answerRelevanceScore,
+          security_score: metrics.securityScore,
+          log_level: metrics.verdict === 'PASSED' ? 'SUCCESS' : 'FAILED',
+          message: `Evaluation run completed for ${selectedModel}. Verdict: ${metrics.verdict}`
+        }
+      ])
+      .select();
+
+    if (dbError) {
+      console.warn("[ORCHESTRATOR WARN] DB Log Insert Warning:", dbError.message);
+    }
+
+    return res.status(200).json({
+      success: true,
+      provider: inferenceResult.provider,
+      model: selectedModel,
+      output: inferenceResult.output,
+      accuracy: metrics.accuracy,
+      gEvalCoTScore: metrics.gEvalCoTScore,
+      hallucinationScore: metrics.hallucinationScore,
+      faithfulnessScore: metrics.faithfulnessScore,
+      answerRelevanceScore: metrics.answerRelevanceScore,
+      securityScore: metrics.securityScore,
+      verdict: metrics.verdict,
+      timestamp: new Date().toISOString()
+    });
+
+  } catch (err) {
+    console.error("[ORCHESTRATOR ERROR]", err);
+    return res.status(500).json({ success: false, error: err.message });
   }
-};
+}

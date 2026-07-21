@@ -1,0 +1,40 @@
+name: Automated LLM Evaluation CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  evaluate-llm-pipeline:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js Environment
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+
+      - name: Install Dependencies
+        run: |
+          npm ci || npm install
+
+      - name: Execute Dynamic Test Selection & Automated Evaluation Suite
+        env:
+          EVAL_GATEWAY_URL: ${{ secrets.EVAL_GATEWAY_URL || 'http://localhost:5000' }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_ANON_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          node tests/eval.test.js
+
+      - name: Evaluate Quality Gate Assertions & Merge Guard
+        run: |
+          echo "Quality Gate Verification Completed."

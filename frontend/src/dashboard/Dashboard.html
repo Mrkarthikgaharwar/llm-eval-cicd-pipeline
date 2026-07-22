@@ -168,14 +168,14 @@
 
     <div class="welcome-card">
         <h2>Welcome to your Panel, <span id="welcome-name">User</span>!</h2>
-        <p style="color: #94a3b8;">Your authentication flow is verified and active. System quality gate assertions and enterprise cloud deployments are aligned across all active node arrays.</p>
+        <p style="color: #94a3b8;">Your authentication flow is verified and active. Real-time evaluation pipeline sync is enabled.</p>
     </div>
 
     <!-- Core Dynamic Cards -->
     <div class="stats-grid">
-        <div class="stat-card"><h3>Total Evaluations</h3> <p id="metric-total">Loading...</p></div>
-        <div class="stat-card" style="border-left-color: #34d399;"><h3>Average Accuracy</h3> <p id="metric-accuracy">Loading...</p></div>
-        <div class="stat-card" style="border-left-color: #a78bfa;"><h3>Active Pipelines</h3> <p id="metric-pipelines">Loading...</p></div>
+        <div class="stat-card"><h3>Total Evaluations</h3> <p id="metric-total">0</p></div>
+        <div class="stat-card" style="border-left-color: #34d399;"><h3>Average Accuracy</h3> <p id="metric-accuracy">0.0%</p></div>
+        <div class="stat-card" style="border-left-color: #a78bfa;"><h3>Active Pipelines</h3> <p id="metric-pipelines">0</p></div>
     </div>
 
     <!-- REPOSITORY AND CI/CD LAYERS -->
@@ -193,7 +193,7 @@
             <h3>GitHub Actions CI/CD Pipeline</h3>
             <table class="standard-table">
                 <thead><tr><th>Workflow Job</th><th>Triggered By</th><th>Live Status</th></tr></thead>
-                <tbody id="cicd-workflow-body"></tbody>
+                <tbody id="cicd-workflow-body"><tr><td colspan="3" style="color:#94a3b8; text-align:center;">Loading CI/CD runs...</td></tr></tbody>
             </table>
         </div>
     </div>
@@ -204,14 +204,14 @@
             <h3>G-Eval Framework (NLP Criteria Metrics)</h3>
             <table class="standard-table">
                 <thead><tr><th>Evaluation Param</th><th>CoT Score</th><th>LLM Reason / Verdict</th></tr></thead>
-                <tbody id="geval-metrics-body"></tbody>
+                <tbody id="geval-metrics-body"><tr><td colspan="3" style="color:#94a3b8;">No evaluations run yet.</td></tr></tbody>
             </table>
         </div>
         <div class="hallucination-card">
             <h3>Hallucination, Faithfulness & Relevance</h3>
             <table class="standard-table">
                 <thead><tr><th>Target Pipeline</th><th>Faithfulness</th><th>Answer Relevance</th><th>Status</th></tr></thead>
-                <tbody id="hallucination-metrics-body"></tbody>
+                <tbody id="hallucination-metrics-body"><tr><td colspan="4" style="color:#94a3b8;">No evaluations run yet.</td></tr></tbody>
             </table>
         </div>
     </div>
@@ -220,15 +220,15 @@
     <div class="three-col-grid">
         <div class="trace-node-card">
             <h3>Component-Level Tracing</h3>
-            <div class="trace-tree" id="tracing-tree-body"></div>
+            <div class="trace-tree" id="tracing-tree-body"><p style="color:#94a3b8;">No trace nodes captured.</p></div>
         </div>
         <div class="sdk-sync-card">
             <h3>Langfuse Integration</h3>
             <table class="standard-table">
                 <thead><tr><th>Trace Parameter</th><th>Value State</th></tr></thead>
                 <tbody id="langfuse-tbody">
-                    <tr><td>SDK Status</td><td><span class="status-pill status-running">Checking...</span></td></tr>
-                    <tr><td>Total Synced Spans</td><td style="font-family: monospace; color:#38bdf8; font-weight:bold;">--</td></tr>
+                    <tr><td>SDK Status</td><td><span class="status-pill status-running">Pending</span></td></tr>
+                    <tr><td>Total Synced Spans</td><td style="font-family: monospace; color:#38bdf8; font-weight:bold;">0 Spans</td></tr>
                     <tr><td>API Latency (Trace)</td><td style="color: #34d399; font-weight:bold;">--</td></tr>
                 </tbody>
             </table>
@@ -239,8 +239,8 @@
                 <thead><tr><th>Collector Node</th><th>Status State</th></tr></thead>
                 <tbody id="phoenix-tbody">
                     <tr><td>Telemetry Endpoint</td><td style="font-family: monospace; color:#94a3b8;">--</td></tr>
-                    <tr><td>Inference Captures</td><td style="font-family: monospace; color:#38bdf8; font-weight:bold;">--</td></tr>
-                    <tr><td>Active Session Ring</td><td><span class="status-pill status-running">Checking...</span></td></tr>
+                    <tr><td>Inference Captures</td><td style="font-family: monospace; color:#38bdf8; font-weight:bold;">0 Captured</td></tr>
+                    <tr><td>Active Session Ring</td><td><span class="status-pill status-running">Offline</span></td></tr>
                 </tbody>
             </table>
         </div>
@@ -258,10 +258,10 @@
                         <th>Gate Verdict</th>
                     </tr>
                 </thead>
-                <tbody>
-                    <tr><td>min-accuracy-guard</td><td class="gate-condition">Accuracy >= 90.0%</td><td><span class="status-pill status-success">Passed</span></td></tr>
-                    <tr><td>max-hallucination-limit</td><td class="gate-condition">Hallucination <= 5.0%</td><td><span class="status-pill status-success">Passed</span></td></tr>
-                    <tr><td>max-latency-ceiling</td><td class="gate-condition">Latency <= 350ms</td><td><span class="status-pill status-success">Passed</span></td></tr>
+                <tbody id="qgate-body">
+                    <tr><td>min-accuracy-guard</td><td class="gate-condition">Accuracy >= 90.0%</td><td><span class="status-pill status-running">Waiting Run</span></td></tr>
+                    <tr><td>max-hallucination-limit</td><td class="gate-condition">Hallucination <= 5.0%</td><td><span class="status-pill status-running">Waiting Run</span></td></tr>
+                    <tr><td>max-latency-ceiling</td><td class="gate-condition">Latency <= 350ms</td><td><span class="status-pill status-running">Waiting Run</span></td></tr>
                 </tbody>
             </table>
         </div>
@@ -277,9 +277,9 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <tr><td>Production Gateway</td><td style="font-family: monospace; font-size:0.8rem; color:#38bdf8;">api.eval-pipeline.cloud</td><td><span class="status-pill status-success">Active Live</span></td></tr>
-                    <tr><td>Edge Node Cluster</td><td style="font-family: monospace; font-size:0.8rem; color:#94a3b8;">aws-us-east-cluster-04</td><td><span class="status-pill status-success">Healthy</span></td></tr>
-                    <tr><td>Network Ping Latency</td><td style="font-family: monospace; font-size:0.8rem; color:#f59e0b;">Server Node Edge Routing</td><td style="color:#34d399; font-weight:bold; font-family:monospace;">18ms (Stable)</td></tr>
+                    <tr><td>Frontend Deployment</td><td style="font-family: monospace; font-size:0.8rem; color:#38bdf8;">Vercel Edge Host</td><td><span class="status-pill status-success">Live</span></td></tr>
+                    <tr><td>Backend Service Host</td><td style="font-family: monospace; font-size:0.8rem; color:#94a3b8;">Render Cloud Gateway</td><td><span class="status-pill status-success">Healthy</span></td></tr>
+                    <tr><td>Database Cluster</td><td style="font-family: monospace; font-size:0.8rem; color:#f59e0b;">Supabase PostgreSQL</td><td style="color:#34d399; font-weight:bold; font-family:monospace;">Connected</td></tr>
                 </tbody>
             </table>
         </div>
@@ -293,7 +293,7 @@
                 <canvas id="historicalTrendsChart"></canvas>
             </div>
         </div>
-        <div class="timeline-card"><h3>Commit History Timeline</h3><div class="timeline-container" id="timeline-container"></div></div>
+        <div class="timeline-card"><h3>Commit History Timeline</h3><div class="timeline-container" id="timeline-container"><p style="color:#94a3b8;">No evaluation runs available.</p></div></div>
     </div>
 
     <!-- PIPELINE COMPARISON SYSTEM -->
@@ -309,14 +309,14 @@
                 <select id="model-b-selector" onchange="runPipelineComparison()"></select>
             </div>
         </div>
-        <table class="standard-table">
+        <table class="standard-table" style="display:none;">
             <thead><tr><th>Evaluation Metric</th><th id="table-header-model-a">Model A</th><th id="table-header-model-b">Model B</th></tr></thead>
             <tbody>
-                <tr><td class="metric-name">Average Accuracy Rate</td><td id="comp-accuracy-a">...</td><td id="comp-accuracy-b">...</td></tr>
-                <tr><td class="metric-name">Total Cases Evaluated</td><td id="comp-cases-a">...</td><td id="comp-cases-b">...</td></tr>
+                <tr><td class="metric-name">Average Accuracy Rate</td><td id="comp-accuracy-a">0%</td><td id="comp-accuracy-b">0%</td></tr>
+                <tr><td class="metric-name">Total Cases Evaluated</td><td id="comp-cases-a">0</td><td id="comp-cases-b">0</td></tr>
             </tbody>
         </table>
-        <p id="comparison-empty-state" style="display:none; color:#94a3b8; margin-top:1rem;">No evaluations have been run yet for comparison. Run test cases through <code>/api/eval/run</code> with different <code>modelConfig.model</code> values to populate this.</p>
+        <p id="comparison-empty-state" style="color:#94a3b8; margin-top:1rem;">No evaluation data available in database for comparison.</p>
     </div>
 
     <!-- PROMPT BREAKDOWN METRICS MATRIX -->
@@ -324,22 +324,19 @@
         <h3>Detailed Prompt Breakdown Analytics</h3>
         <table class="standard-table">
             <thead><tr><th>Prompt Template ID</th><th>Target Version</th><th>Avg Input Tokens</th><th>Avg Output Tokens</th><th>Success Evaluation Rate</th></tr></thead>
-            <tbody id="prompt-matrix-body"></tbody>
+            <tbody id="prompt-matrix-body"><tr><td colspan="5" style="color:#94a3b8;">No active prompt evaluation logs recorded.</td></tr></tbody>
         </table>
     </div>
 
     <!-- ASYNCHRONOUS LIVE TERMINAL ENGINE -->
     <div class="terminal-card">
         <h3>Real-time Live Evaluation Log Stream</h3>
-        <div class="terminal-box" id="terminal-console"></div>
+        <div class="terminal-box" id="terminal-console"><div style="color:#94a3b8;">[LOG ENGINE] Connecting to live backend stream...</div></div>
     </div>
 </div>
 
 <script>
-const token = localStorage.getItem('supabase_auth_token') || sessionStorage.getItem('supabase_auth_token');
 const savedUserInfo = localStorage.getItem('user_info');
-
-// Safe Default Profile Fallback for Direct Local Access
 const userInfo = savedUserInfo ? JSON.parse(savedUserInfo) : {
     username: 'Evaluator User',
     email: 'kartik8@test.com',
@@ -354,20 +351,16 @@ document.getElementById('prof-verified').innerText = userInfo.lastLogin ? new Da
 document.getElementById('welcome-name').innerText = userInfo.username || 'Evaluator User';
 document.getElementById('session-badge').innerText = `Session: ${userInfo.sessionStatus || 'Active'}`;
 
-// Dynamic Host Resolver Supporting Localhost, 127.0.0.1 and Live Server Port
 const BACKEND_URL = 'https://llm-eval-backend-v2.onrender.com';
-
-console.log("[DASHBOARD INITIALIZER] Connected Backend Gateway:", BACKEND_URL);
 
 // Initialize Real API Sync Pipeline
 fetchPipelineMetrics(BACKEND_URL);
 fetchEvaluationDetails(BACKEND_URL);
 renderCicdWorkflowStatus(BACKEND_URL);
 renderComponentTracingTree(BACKEND_URL);
-renderPromptBreakdownMetrics();
+fetchPromptBreakdownMetrics(BACKEND_URL);
 startLiveLogStream(BACKEND_URL);
 
-// LOGOUT ACTION
 document.getElementById('logout-button').addEventListener('click', () => {
     localStorage.clear();
     sessionStorage.clear();
@@ -422,7 +415,7 @@ async function renderCicdWorkflowStatus(backendUrl) {
     });
   } catch (err) {
     console.error("CI/CD Fetch Error:", err);
-    tableBody.innerHTML = '<tr><td colspan="3" style="color:#f76f7f;">Failed to fetch live CI/CD pipeline status.</td></tr>';
+    tableBody.innerHTML = '<tr><td colspan="3" style="color:#f87171; text-align:center;">No live CI/CD pipeline runs retrieved.</td></tr>';
   }
 }
 
@@ -435,15 +428,12 @@ async function fetchEvaluationDetails(backendUrl) {
         evaluationDetailsCache = await response.json();
     } catch (err) {
         console.error('[DASHBOARD] Evaluation details fetch failed:', err.message);
+        // STRICTLY NO MOCK DATA FALLBACK
         evaluationDetailsCache = { 
           gEvalMetrics: [], 
           hallucinationTable: [], 
           performanceTrend: [], 
-          modelComparison: [
-            { model: "gemini-1.5-pro", averageAccuracy: 94.2, totalCasesRun: 42 },
-            { model: "llama-3-8b-8192 (Groq)", averageAccuracy: 91.8, totalCasesRun: 38 },
-            { model: "mixtral-8x7b (HuggingFace)", averageAccuracy: 88.5, totalCasesRun: 25 }
-          ] 
+          modelComparison: [] 
         };
     }
     renderAIEvaluationMetrics();
@@ -458,7 +448,7 @@ function renderAIEvaluationMetrics() {
             gevalBody.innerHTML = '';
             const rows = evaluationDetailsCache.gEvalMetrics || [];
             if (rows.length === 0) {
-                gevalBody.insertAdjacentHTML('beforeend', `<tr><td colspan="3" style="color:#94a3b8;">No evaluations have been run yet. Run test cases through /api/eval/run to populate this.</td></tr>`);
+                gevalBody.insertAdjacentHTML('beforeend', `<tr><td colspan="3" style="color:#94a3b8;">No evaluations run in database yet.</td></tr>`);
             } else {
                 rows.forEach(row => {
                     const state = row.score >= 0.9 ? 'score-high' : (row.score >= 0.6 ? 'score-med' : 'score-low');
@@ -478,10 +468,10 @@ function renderAIEvaluationMetrics() {
             hallBody.innerHTML = '';
             const rows = evaluationDetailsCache.hallucinationTable || [];
             if (rows.length === 0) {
-                hallBody.insertAdjacentHTML('beforeend', `<tr><td colspan="4" style="color:#94a3b8;">No evaluations have been run yet.</td></tr>`);
+                hallBody.insertAdjacentHTML('beforeend', `<tr><td colspan="4" style="color:#94a3b8;">No evaluations run in database yet.</td></tr>`);
             } else {
                 rows.forEach(row => {
-                    const pill = row.status === 'Passed' ? 'status-success' : 'status-running';
+                    const pill = row.status === 'Passed' ? 'status-success' : 'status-failed';
                     hallBody.insertAdjacentHTML('beforeend', `
                         <tr>
                             <td style="font-family: monospace; font-weight: 600; color: #38bdf8;">${row.target}</td>
@@ -504,8 +494,7 @@ async function renderComponentTracingTree(backendUrl) {
     const res = await fetch(`${backendUrl}/api/v1/telemetry/traces`);
     const data = await res.json();
 
-    if (data.success) {
-      // 1. Component Tracing Nodes
+    if (data && data.success && data.tracingNodes && data.tracingNodes.length > 0) {
       treeContainer.innerHTML = '';
       data.tracingNodes.forEach(node => {
         treeContainer.insertAdjacentHTML('beforeend', `
@@ -519,9 +508,8 @@ async function renderComponentTracingTree(backendUrl) {
         `);
       });
 
-      // 2. Langfuse Table Sync
       const langfuseBody = document.getElementById('langfuse-tbody');
-      if (langfuseBody) {
+      if (langfuseBody && data.langfuse) {
         langfuseBody.innerHTML = `
           <tr>
             <td>SDK Status</td>
@@ -529,36 +517,38 @@ async function renderComponentTracingTree(backendUrl) {
           </tr>
           <tr>
             <td>Total Synced Spans</td>
-            <td style="color: #38bdf8; font-weight: bold;">${data.langfuse.syncedSpans.toLocaleString()} Spans</td>
+            <td style="color: #38bdf8; font-weight: bold;">${Number(data.langfuse.syncedSpans || 0).toLocaleString()} Spans</td>
           </tr>
           <tr>
             <td>API Latency (Trace)</td>
-            <td style="color: #34d399; font-weight: bold;">${data.langfuse.apiLatency}</td>
+            <td style="color: #34d399; font-weight: bold;">${data.langfuse.apiLatency || '--'}</td>
           </tr>
         `;
       }
 
-      // 3. Phoenix Table Sync
       const phoenixBody = document.getElementById('phoenix-tbody');
-      if (phoenixBody) {
+      if (phoenixBody && data.phoenix) {
         phoenixBody.innerHTML = `
           <tr>
             <td>Collector Node</td>
-            <td style="font-family: monospace; color: #94a3b8;">${data.phoenix.endpoint}</td>
+            <td style="font-family: monospace; color: #94a3b8;">${data.phoenix.endpoint || '--'}</td>
           </tr>
           <tr>
             <td>Inference Captures</td>
-            <td style="color: #38bdf8; font-weight: bold;">${data.phoenix.captures.toLocaleString()} Captured</td>
+            <td style="color: #38bdf8; font-weight: bold;">${Number(data.phoenix.captures || 0).toLocaleString()} Captured</td>
           </tr>
           <tr>
             <td>Active Session Ring</td>
-            <td><span class="status-pill status-success">${data.phoenix.sessionState}</span></td>
+            <td><span class="status-pill ${data.phoenix.sessionState === 'Connected' ? 'status-success' : 'status-failed'}">${data.phoenix.sessionState || 'Offline'}</span></td>
           </tr>
         `;
       }
+    } else {
+        treeContainer.innerHTML = `<p style="color:#94a3b8;">No dynamic tracing spans recorded.</p>`;
     }
   } catch (err) {
     console.error("Tracing Telemetry Fetch Error:", err);
+    treeContainer.innerHTML = `<p style="color:#94a3b8;">Telemetry service offline.</p>`;
   }
 }
 
@@ -568,6 +558,7 @@ function initializeHistoricalAnalytics() {
     const trend = evaluationDetailsCache.performanceTrend || [];
     const ctx = document.getElementById('historicalTrendsChart').getContext('2d');
     if (historicalChartInstance) historicalChartInstance.destroy();
+    
     historicalChartInstance = new Chart(ctx, {
         type: 'line',
         data: {
@@ -587,7 +578,7 @@ function initializeHistoricalAnalytics() {
     if(timelineContainer) {
         timelineContainer.innerHTML = '';
         if (trend.length === 0) {
-            timelineContainer.innerHTML = `<p style="color:#94a3b8;">No evaluation runs yet.</p>`;
+            timelineContainer.innerHTML = `<p style="color:#94a3b8;">No evaluation runs in database.</p>`;
             return;
         }
         [...trend].reverse().forEach(item => {
@@ -607,17 +598,16 @@ function populateComparisonSelectors() {
     const selA = document.getElementById('model-a-selector');
     const selB = document.getElementById('model-b-selector');
     const emptyState = document.getElementById('comparison-empty-state');
+    const table = document.querySelector('.comparison-card .standard-table');
 
     if (models.length === 0) {
         if(selA) selA.innerHTML = '';
         if(selB) selB.innerHTML = '';
-        const table = document.querySelector('.comparison-card .standard-table');
         if(table) table.style.display = 'none';
         if (emptyState) emptyState.style.display = 'block';
         return;
     }
 
-    const table = document.querySelector('.comparison-card .standard-table');
     if(table) table.style.display = '';
     if (emptyState) emptyState.style.display = 'none';
 
@@ -642,7 +632,7 @@ function runPipelineComparison() {
     document.getElementById('table-header-model-a').innerText = dataA.model;
     document.getElementById('table-header-model-b').innerText = dataB.model;
     document.getElementById('comp-accuracy-a').innerText = dataA.averageAccuracy + "%";
-    document.getElementById('comp-accuracy-b').innerText = dataA.averageAccuracy + "%";
+    document.getElementById('comp-accuracy-b').innerText = dataB.averageAccuracy + "%";
     document.getElementById('comp-cases-a').innerText = dataA.totalCasesRun;
     document.getElementById('comp-cases-b').innerText = dataB.totalCasesRun;
 
@@ -652,26 +642,32 @@ function runPipelineComparison() {
     else if (dataB.averageAccuracy > dataA.averageAccuracy) document.getElementById('comp-accuracy-b').className = "highlight-win";
 }
 
-function renderPromptBreakdownMetrics() {
-    const promptRegistryDataset = [
-        { templateId: "structured_eval_core", version: "v2.4.1", inputTokens: 420, outputTokens: 180, rate: "96.2%" },
-        { templateId: "few_shot_agent_mesh", version: "v1.0.8", inputTokens: 1250, outputTokens: 512, rate: "94.5%" },
-        { templateId: "zero_shot_fallback", version: "v3.1.0", inputTokens: 280, outputTokens: 95, rate: "88.1%" }
-    ];
+async function fetchPromptBreakdownMetrics(backendUrl) {
     const targetTableBody = document.getElementById('prompt-matrix-body');
-    if(targetTableBody) {
-        targetTableBody.innerHTML = '';
-        promptRegistryDataset.forEach(row => {
-            targetTableBody.insertAdjacentHTML('beforeend', `
-                <tr>
-                    <td class="template-name">${row.templateId}</td>
-                    <td style="color: #94a3b8; font-weight:600;">${row.version}</td>
-                    <td><span class="token-badge-in">${row.inputTokens} tkn</span></td>
-                    <td><span class="token-badge-out">${row.outputTokens} tkn</span></td>
-                    <td style="color: #38bdf8; font-weight: bold;">${row.rate}</td>
-                </tr>
-            `);
-        });
+    if(!targetTableBody) return;
+
+    try {
+        const response = await fetch(`${backendUrl}/api/v1/prompts/breakdown`);
+        const data = await response.json();
+        
+        if (data.success && data.prompts && data.prompts.length > 0) {
+            targetTableBody.innerHTML = '';
+            data.prompts.forEach(row => {
+                targetTableBody.insertAdjacentHTML('beforeend', `
+                    <tr>
+                        <td class="template-name">${row.templateId}</td>
+                        <td style="color: #94a3b8; font-weight:600;">${row.version}</td>
+                        <td><span class="token-badge-in">${row.inputTokens} tkn</span></td>
+                        <td><span class="token-badge-out">${row.outputTokens} tkn</span></td>
+                        <td style="color: #38bdf8; font-weight: bold;">${row.rate}</td>
+                    </tr>
+                `);
+            });
+        } else {
+            targetTableBody.innerHTML = '<tr><td colspan="5" style="color:#94a3b8;">No active prompt logs in database.</td></tr>';
+        }
+    } catch(err) {
+        targetTableBody.innerHTML = '<tr><td colspan="5" style="color:#94a3b8;">No active prompt evaluation records.</td></tr>';
     }
 }
 
@@ -684,7 +680,7 @@ async function startLiveLogStream(backendUrl) {
       const res = await fetch(`${backendUrl}/api/v1/logs/stream`);
       const data = await res.json();
 
-      if (data.success && data.logs) {
+      if (data.success && data.logs && data.logs.length > 0) {
         terminalBox.innerHTML = '';
         data.logs.forEach(logText => {
           const logLine = document.createElement('div');

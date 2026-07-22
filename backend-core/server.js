@@ -11,6 +11,11 @@ import { fetchTelemetryTraces } from './monitoring/telemetryTracker.js';
 const app = express();
 const PORT = process.env.PORT || 5000;
 
+// Dynamic In-Memory Log Store (No Fake Fallbacks)
+global.liveSystemLogs = global.liveSystemLogs || [
+  `[${new Date().toLocaleTimeString()}] INFO: System Gateway Initialized.`
+];
+
 // CORS & Middleware Config
 app.use(cors({ origin: '*' }));
 app.use(express.json());
@@ -21,7 +26,12 @@ app.post('/api/auth/login', login);
 app.post('/api/auth/forgot-password', forgotPassword);
 
 // 2. Evaluation Suite Orchestrator Route
-app.post('/api/eval/run', runSuiteOrchestrator);
+app.post('/api/eval/run', (req, res, next) => {
+  const timestamp = new Date().toLocaleTimeString();
+  global.liveSystemLogs.push(`[${timestamp}] EVALUATION_RUN: Executing test suite for prompt...`);
+  if (global.liveSystemLogs.length > 20) global.liveSystemLogs.shift();
+  runSuiteOrchestrator(req, res, next);
+});
 
 // 3. Dashboard Analytics & Metrics Routes
 app.get('/api/dashboard/metrics', getDashboardMetrics);
@@ -30,7 +40,7 @@ app.get('/api/dashboard/evaluation-details', getEvaluationDetails);
 // 4. Component Tracing & Telemetry Route (Langfuse & Arize Phoenix)
 app.get('/api/v1/telemetry/traces', fetchTelemetryTraces);
 
-// 5. GitHub Actions CI/CD Integration Endpoint
+// 5. GitHub Actions CI/CD Integration Endpoint (Pure Dynamic)
 app.get('/api/v1/github/actions', async (req, res) => {
   try {
     const repoOwner = process.env.GITHUB_OWNER || 'kartik-singh';
@@ -41,13 +51,7 @@ app.get('/api/v1/github/actions', async (req, res) => {
     });
 
     if (!response.ok) {
-      return res.status(200).json({
-        success: true,
-        workflows: [
-          { job: "llm-eval-accuracy-check", actor: "main branch", status: "success" },
-          { job: "run-hallucination-guard", actor: "main branch", status: "success" }
-        ]
-      });
+      return res.status(200).json({ success: true, workflows: [] });
     }
 
     const data = await response.json();
@@ -59,25 +63,15 @@ app.get('/api/v1/github/actions', async (req, res) => {
 
     return res.status(200).json({ success: true, workflows });
   } catch (err) {
-    return res.status(200).json({
-      success: true,
-      workflows: [
-        { job: "llm-eval-accuracy-check", actor: "system", status: "success" }
-      ]
-    });
+    return res.status(200).json({ success: true, workflows: [] });
   }
 });
 
-// 6. Live Evaluation Terminal Log Stream Endpoint
+// 6. Live Evaluation Terminal Log Stream Endpoint (Dynamic Output)
 app.get('/api/v1/logs/stream', (req, res) => {
-  const timestamp = new Date().toLocaleTimeString();
   return res.status(200).json({
     success: true,
-    logs: [
-      `[${timestamp}] INFO: System Gateway Online on http://localhost:${PORT}`,
-      `[${timestamp}] SUCCESS: Enterprise Quality Gates assertions synced.`,
-      `[${timestamp}] INFO: Active Inference Engine Listening (Gemini / Groq / HuggingFace Router).`
-    ]
+    logs: global.liveSystemLogs
   });
 });
 

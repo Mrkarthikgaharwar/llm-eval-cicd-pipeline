@@ -552,11 +552,35 @@ function initializeHistoricalAnalytics() {
                 label: 'Pipeline Accuracy (%)',
                 data: trend.map(item => item.accuracy),
                 borderColor: '#38bdf8',
-                backgroundColor: 'rgba(56, 189, 248, 0.1)',
-                borderWidth: 2, tension: 0.3, fill: true
+                backgroundColor: 'rgba(56, 189, 248, 0.2)',
+                borderWidth: 3,
+                pointRadius: 5,
+                pointBackgroundColor: '#34d399',
+                tension: 0.3,
+                fill: true
             }]
         },
-        options: { responsive: true, maintainAspectRatio: false }
+        options: { 
+            responsive: true, 
+            maintainAspectRatio: false,
+            scales: {
+                x: {
+                    ticks: { color: '#f8fafc', font: { size: 12, weight: 'bold' } },
+                    grid: { color: '#334155' }
+                },
+                y: {
+                    min: 80,
+                    max: 100,
+                    ticks: { color: '#f8fafc', font: { size: 12, weight: 'bold' }, callback: value => value + '%' },
+                    grid: { color: '#334155' }
+                }
+            },
+            plugins: {
+                legend: {
+                    labels: { color: '#f8fafc', font: { size: 13, weight: 'bold' } }
+                }
+            }
+        }
     });
 
     const timelineContainer = document.getElementById('timeline-container');
